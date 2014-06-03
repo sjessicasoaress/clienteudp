@@ -31,17 +31,15 @@ import javax.swing.JScrollPane;
 import javax.swing.JTextField;
 import javax.swing.UIManager;
 import javax.swing.border.LineBorder;
+import socketUDP.*;
 
 /**
  *
  * @author jessica
  */
 public class ClienteUDP extends JFrame {
-
-    PrintWriter saida;
-    Socket conexao;
+    MySocket mySocket;
     JTextField txtStatus, txtQuantidadePecas;
-    Scanner entrada;
     ArrayList<JButton> btnsPecasMesa, btnsPecas;
     ArrayList<String> pecasDisponiveisParaCompra, pecasCompradasNaJogada;
     JButton btnPassarVez, btnComprar;
@@ -56,15 +54,16 @@ public class ClienteUDP extends JFrame {
     int portaServidor=40000;
     
     ClienteUDP(String ip, int porta) throws IOException {
+        mySocket = new MySocket(InetAddress.getByName(ip), porta, porta+1);
         frame = this;
         configurarLayoutTela();
-        chamarServidor(ipServidor, portaServidor);
+        chamarServidor();
     }
 
     //"127.0.0.1", 40000
-    private void chamarServidor(InetAddress ip, int porta) throws IOException {
+    private void chamarServidor() throws IOException {
         try {
-            enviarMensagem("oi");
+            //enviarMensagem("oi");
             aguardarMensagemDoServidor();
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(null, "Erro: " + ex.getMessage());
@@ -213,15 +212,17 @@ public class ClienteUDP extends JFrame {
     }
     
     public void enviarMensagem(String mensagem){
-    byte[] mensagemEnviada = new byte[1024];
-    
-                mensagemEnviada = mensagem.getBytes();
-                DatagramPacket datagramaEnviado= new DatagramPacket(mensagemEnviada, mensagemEnviada.length, ipServidor, portaServidor);
-                try {
-                    socketCliente.send(datagramaEnviado);
-                } catch (IOException ex) {
-                    Logger.getLogger(ClienteUDP.class.getName()).log(Level.SEVERE, null, ex);
-                }
+        System.out.println(mensagem);
+        mySocket.enviarMensagem(mensagem);
+//    byte[] mensagemEnviada = new byte[1024];
+//    
+//                mensagemEnviada = mensagem.getBytes();
+//                DatagramPacket datagramaEnviado= new DatagramPacket(mensagemEnviada, mensagemEnviada.length, ipServidor, portaServidor);
+//                try {
+//                    socketCliente.send(datagramaEnviado);
+//                } catch (IOException ex) {
+//                    Logger.getLogger(ClienteUDP.class.getName()).log(Level.SEVERE, null, ex);
+//                }
                 
     }
 
@@ -255,13 +256,16 @@ public class ClienteUDP extends JFrame {
 
     }
 
-    private void aguardarMensagemDoServidor() throws IOException {
+    private void aguardarMensagemDoServidor() throws IOException, InterruptedException {
 
-        while (true) {
-        byte[] mensagemRecebida = new byte[1024];
-        DatagramPacket datagramaRecebido = new DatagramPacket(mensagemRecebida, mensagemRecebida.length);
-        socketCliente.receive(datagramaRecebido);
-        String mensagem = new String(datagramaRecebido.getData());
+        String mensagem;
+        boolean loop = true;
+        while (loop) {
+//        byte[] mensagemRecebida = new byte[1024];
+//        DatagramPacket datagramaRecebido = new DatagramPacket(mensagemRecebida, mensagemRecebida.length);
+//        socketCliente.receive(datagramaRecebido);
+//        String mensagem = new String();
+            mensagem = mySocket.receberMensagem();
             System.out.println("mensagem"+mensagem);
         
             String[] mensagens = mensagem.trim().split("#");
