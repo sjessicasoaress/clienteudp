@@ -18,8 +18,6 @@ import java.io.*;
 import java.net.*;
 import java.util.ArrayList;
 import java.util.Scanner;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import javax.swing.BoxLayout;
 import javax.swing.ButtonGroup;
 import javax.swing.JButton;
@@ -29,41 +27,41 @@ import javax.swing.JPanel;
 import javax.swing.JRadioButton;
 import javax.swing.JScrollPane;
 import javax.swing.JTextField;
+import javax.swing.SwingConstants;
 import javax.swing.UIManager;
 import javax.swing.border.LineBorder;
-import socketUDP.*;
+import socketUDP.MySocket;
 
 /**
  *
  * @author jessica
  */
 public class ClienteUDP extends JFrame {
+
+//    PrintWriter saida;
+//    Socket conexao;
+    JTextField txtStatus, txtQuantidadePecas, txtPontuacaoEquipes;
+//    Scanner entrada;
     MySocket mySocket;
-    JTextField txtStatus, txtQuantidadePecas;
     ArrayList<JButton> btnsPecasMesa, btnsPecas;
     ArrayList<String> pecasDisponiveisParaCompra, pecasCompradasNaJogada;
-    JButton btnPassarVez, btnComprar;
+    JButton btnPassarVez, btnComprar, btnNovaPartida;
     Container painelJogador, painelMesa, painelAcoes, painelBase, painelTopo;
     JRadioButton rbInserirNaEsquerda, rbInserirNaDireita;
     ButtonGroup grupoBotoes;
     JFrame frame;
     int id;
-    BufferedReader bufferEntrada = new BufferedReader(new InputStreamReader(System.in));
-    DatagramSocket socketCliente = new DatagramSocket();
-    InetAddress ipServidor = InetAddress.getByName("localhost");
-    int portaServidor=40000;
-    
+
     ClienteUDP(String ip, int porta) throws IOException {
-        mySocket = new MySocket(InetAddress.getByName(ip), porta, porta+1);
         frame = this;
         configurarLayoutTela();
-        chamarServidor();
+        criarConexaoComOServidor(ip, porta);
     }
 
     //"127.0.0.1", 40000
-    private void chamarServidor() throws IOException {
+    private void criarConexaoComOServidor(String ip, int porta) throws IOException {
         try {
-            //enviarMensagem("oi");
+            mySocket = new MySocket(InetAddress.getByName(ip), porta,porta+1);//IP servidor, porta servidor, porta local
             aguardarMensagemDoServidor();
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(null, "Erro: " + ex.getMessage());
@@ -118,14 +116,17 @@ public class ClienteUDP extends JFrame {
     }
 
     private void configurarLayoutTela() {
-        Font fonte = new Font("Comic Sans", Font.PLAIN, 18);
+        Font fonte = new Font("Comic Sans", Font.BOLD, 15);
         this.setForeground(Color.WHITE);
         txtStatus = new JTextField("Aguardando todos os participantes se conectarem..");
         txtStatus.setFont(fonte);
         txtQuantidadePecas = new JTextField();
+        txtPontuacaoEquipes = new JTextField();
+        txtPontuacaoEquipes.setFont(fonte);
         txtQuantidadePecas.setFont(fonte);
-        txtStatus.setBackground(this.getBackground());
-        txtQuantidadePecas.setBackground(this.getBackground());
+        txtStatus.setEditable(false);
+        txtQuantidadePecas.setEditable(false);
+        txtPontuacaoEquipes.setEditable(false);
         btnsPecas = new ArrayList();
         btnsPecasMesa = new ArrayList();
         pecasDisponiveisParaCompra = new ArrayList();
@@ -141,7 +142,7 @@ public class ClienteUDP extends JFrame {
         rbInserirNaEsquerda = new JRadioButton("Inserir na esquerda");
         rbInserirNaDireita = new JRadioButton("Inserir na direita");
         painelJogador = new JPanel();
-        
+        btnNovaPartida = new JButton("Iniciar Nova Partida");
         painelMesa = new JPanel();
         painelBase = new JPanel();
         painelTopo = new JPanel();
@@ -175,6 +176,11 @@ public class ClienteUDP extends JFrame {
         p.setLayout(new BorderLayout());
         painelBase.add(painelJogador);
         painelTopo.add(txtStatus);
+        alterarDesignBotao(btnNovaPartida);
+        painelTopo.add(btnNovaPartida);
+        btnNovaPartida.setVisible(false);
+        exibirPontuacaoDasEquipes("Equipe A: 0 pontos, Equipe B: 0 pontos");
+        painelTopo.add(txtPontuacaoEquipes);
         painelTopo.add(txtQuantidadePecas);
         p.add(BorderLayout.NORTH, painelTopo);
         p.add(BorderLayout.SOUTH, painelBase);
@@ -196,7 +202,11 @@ public class ClienteUDP extends JFrame {
     }
 
     private void exibirQuantidadePecasDosJogadores(String quantidadePecasJogadores) {
-        txtQuantidadePecas.setText("Qtd de peças: " + quantidadePecasJogadores);
+        txtQuantidadePecas.setText(quantidadePecasJogadores);
+        painelTopo.revalidate();
+    }
+    private void exibirPontuacaoDasEquipes(String pontuacaoEquipes) {
+        txtPontuacaoEquipes.setText(pontuacaoEquipes);
         painelTopo.revalidate();
     }
 
@@ -210,28 +220,12 @@ public class ClienteUDP extends JFrame {
         }
         return pecasCompradas;
     }
-    
-    public void enviarMensagem(String mensagem){
-        System.out.println(mensagem);
-        mySocket.enviarMensagem(mensagem);
-//    byte[] mensagemEnviada = new byte[1024];
-//    
-//                mensagemEnviada = mensagem.getBytes();
-//                DatagramPacket datagramaEnviado= new DatagramPacket(mensagemEnviada, mensagemEnviada.length, ipServidor, portaServidor);
-//                try {
-//                    socketCliente.send(datagramaEnviado);
-//                } catch (IOException ex) {
-//                    Logger.getLogger(ClienteUDP.class.getName()).log(Level.SEVERE, null, ex);
-//                }
-                
-    }
 
     private void definirAcoesBotoes() {
 
         btnPassarVez.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent evt) {
-                String mensagem=("#" + pecasCompradasNaJogada());
-                enviarMensagem(mensagem);
+                mySocket.enviarMensagem(TipoMensagem.ID_MENSAGEM_PASSAR_VEZ+"#" + pecasCompradasNaJogada());
                 desabilitarBotoes();
             }
         });
@@ -253,25 +247,25 @@ public class ClienteUDP extends JFrame {
                 }
             }
         });
+        
+        btnNovaPartida.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent evt) {
+                mySocket.enviarMensagem(TipoMensagem.ID_MENSAGEM_NOVA_PARTIDA+"#");
+            }
+        });
 
     }
 
-    private void aguardarMensagemDoServidor() throws IOException, InterruptedException {
+    private void aguardarMensagemDoServidor() throws InterruptedException {
 
-        String mensagem;
-        boolean loop = true;
-        while (loop) {
-//        byte[] mensagemRecebida = new byte[1024];
-//        DatagramPacket datagramaRecebido = new DatagramPacket(mensagemRecebida, mensagemRecebida.length);
-//        socketCliente.receive(datagramaRecebido);
-//        String mensagem = new String();
-            mensagem = mySocket.receberMensagem();
-            System.out.println("mensagem"+mensagem);
-        
-            String[] mensagens = mensagem.trim().split("#");
+        String texto;
+        while ((texto = mySocket.receberMensagem()) != null) {
+            System.out.println(texto);
+            String[] mensagens = texto.split("#");
+            //ID_MENSAGEM_INICIAL
             if (mensagens[0].equals("0")) {
-                this.id = Integer.parseInt(mensagens[1].trim());
-                char equipe = (this.id%2==0)? 'A':'B';//mensagens[4].charAt(0);
+                this.id = Integer.parseInt(mensagens[1]);
+                char equipe = (this.id%2==0)?'A':'B';//mensagens[4].charAt(0);
                 frame.setTitle("ID:" + this.id + " Equipe:" + equipe);
                 String[] pecas = mensagens[2].split(",");
                 for (int i = 0; i < btnsPecas.size(); i++) {
@@ -280,11 +274,10 @@ public class ClienteUDP extends JFrame {
                 String[] pecasCompra = mensagens[3].split(",");
                 for (int i = 0; i < pecasCompra.length; i++) {
                     pecasDisponiveisParaCompra.add(pecasCompra[i]);
-                }
+                } 
             } 
-            //ID_MENSAGEM_INICIAL
+            //ID_MENSAGEM_INFORMAR_JOGADOR_DA_VEZ
             else if (mensagens[0].equals("1")) {
-                
                 int idJogadorDaVez = Integer.parseInt(mensagens[1]);
 
                 if (idJogadorDaVez == this.id) {
@@ -307,7 +300,7 @@ public class ClienteUDP extends JFrame {
                     btnsPecasMesa.add(0, botaoMesa);
                 } else {
                     btnsPecasMesa.add(botaoMesa);
-                } 
+                }
                 redesenharPecasDaMesa();
                 exibirQuantidadePecasDosJogadores(mensagens[3]);
             } 
@@ -318,18 +311,20 @@ public class ClienteUDP extends JFrame {
                 for (int i = 0; i < numeroPecasCompradasPeloAdversario; i++) {
                            pecasDisponiveisParaCompra.remove(0);                        
                     }
+                   exibirQuantidadePecasDosJogadores(mensagens[2]);
                 }
+            //ID_MENSAGEM_VENCEDOR_PARTIDA
             else if(mensagens[0].equals("4")){
                 JOptionPane.showMessageDialog(null, "O Jogador "+mensagens[1]+" venceu esta partida. Pontuaç�o: "+mensagens[2]);
                 desabilitarBotoes();
-                JButton btnNovaPartida = new JButton("Iniciar Nova Partida");
+                btnNovaPartida.setVisible(true);
                 txtStatus.setVisible(false);
-                painelTopo.add(btnNovaPartida);
-                alterarDesignBotao(btnNovaPartida);
+                painelTopo.add(BorderLayout.CENTER, btnNovaPartida);
+                btnNovaPartida.setHorizontalAlignment(SwingConstants.CENTER);
+                exibirPontuacaoDasEquipes(mensagens[3]);
                 painelTopo.revalidate();
             }
         }
-        //}
     }
 
     public class EnviarMensagemAoServidor implements ActionListener {
@@ -343,9 +338,9 @@ public class ClienteUDP extends JFrame {
             if (valido) {
                 //tem que girar a peça em alguns casos na hora de desenhar
                 verificarSeAPecaEstaDoLadoCorreto(pecaClicada, direita);
-
-                String mensagem=direita + "#" + pecaClicada.getText() + "#" + pecasQueEstaoNasPontas() + "#" + pecasCompradasNaJogada();
-                enviarMensagem(mensagem);
+                System.out.println(TipoMensagem.ID_MENSAGEM_PECA_JOGADA+"#"+direita + "#" + pecaClicada.getText() + "#" + pecasQueEstaoNasPontas() + "#" + pecasCompradasNaJogada());
+                mySocket.enviarMensagem(TipoMensagem.ID_MENSAGEM_PECA_JOGADA+"#"+direita + "#" + pecaClicada.getText() + "#" + pecasQueEstaoNasPontas() + "#" + pecasCompradasNaJogada());
+                
                 pecaClicada.setVisible(false);
                 btnsPecas.remove(pecaClicada);
                 desabilitarBotoes();

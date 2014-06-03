@@ -28,7 +28,7 @@ public class MySocket {
     private boolean conectado;
     private DatagramSocket serverSocket;
     
-    private final int TEMPO_ESPERA_ENVIO = 10000;
+    private final int TEMPO_ESPERA_ENVIO = 2000;
     
     //buffer
     private final int BUFFER_SIZE = 2;
